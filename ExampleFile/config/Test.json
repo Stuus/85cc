@@ -1,0 +1,135 @@
+{
+  "categories": [
+    {
+      "displayName": "蛋糕",
+      "query": ">[長條]:B + >[整膜]:B + >[切片]:B"
+    },
+    {
+      "displayName": "麵包",
+      "query": ">[麵包]:B"
+    },
+    {
+      "displayName": "飲料",
+      "query": ">[奶茶2]:B + >[冰沙1]:B + >[茶1]:B + >[茶2]:B"
+    },
+    {
+      "displayName": "咖啡",
+      "query": ">[咖啡]:B"
+    },
+    {
+      "displayName": "點心",
+      "query": ">[點心]:B"
+    },
+    {
+      "displayName": "伴手",
+      "query": ">[伴手]:B"
+    },
+    {
+      "displayName": "常溫",
+      "query": ">[常溫]:B"
+    },
+    {
+      "displayName": "其他",
+      "query": ">[其他]:B"
+    }
+  ],
+  "trackSales": [
+    {
+      "displayName": "長條蛋糕",
+      "query": "~[長條]:A"
+    },
+    {
+      "displayName": "貝果系列",
+      "query": "~[貝果]:A"
+    },
+    {
+      "displayName": "蔬翠卷",
+      "query": "~[蔬翠培根捲]:A"
+    },
+    {
+      "displayName": "年糕系列",
+      "query": "~[年糕]:A"
+    },
+    {
+      "displayName": "芙蓉蛋塔",
+      "query": "~[蛋塔]:A"
+    },
+    {
+      "displayName": "鉑金系列",
+      "query": "~[鉑金]:A"
+    },
+    {
+      "displayName": "焦糖脆皮泡芙",
+      "query": "~[泡芙]:A"
+    },
+    {
+      "displayName": "甜心冰粽",
+      "query": "~[冰粽]:A"
+    },
+    {
+      "displayName": "雲朵生乳燒",
+      "query": "~[生乳燒]:A"
+    }
+  ],
+  "combinedSales": [
+    {
+      "displayName": "杜拜法國/Q餅",
+      "queries": [
+        "~[1294]:A",
+        "~[1335]:A"
+      ]
+    },
+    {
+      "displayName": "荔枝系列/頻香檸檬",
+      "queries": [
+        "~[荔枝]:A",
+        "~[頻香檸檬]:A"
+      ]
+    },
+    {
+      "displayName": "杜拜冰沙/青檸",
+      "queries": [
+        "~[可可冰沙]:A",
+        "~[青檸]:A"
+      ]
+    }
+  ],
+  "inventoryItems": [
+    {
+      "name": "鮮奶",
+      "requiresDate": true
+    },
+    {
+      "name": "奶精",
+      "requiresDate": false
+    },
+    {
+      "name": "義豆",
+      "requiresDate": false
+    },
+    {
+      "name": "厚豆",
+      "requiresDate": false
+    },
+    {
+      "name": "鉑豆",
+      "requiresDate": false
+    },
+    {
+      "name": "多多",
+      "requiresDate": false
+    },
+    {
+      "name": "冰粽-紅豆",
+      "requiresDate": false
+    },
+    {
+      "name": "冰粽-芋頭",
+      "requiresDate": false
+    },
+    {
+      "name": "冰粽-香菜",
+      "requiresDate": false
+    }
+  ]
+}
