@@ -20,38 +20,38 @@
 ```mermaid
 graph TD
     subgraph Frontend ["React Application (UI Layer)"]
-        App[App.tsx (Router)]
-        App --> Report[首頁: ReportPage.tsx]
-        App --> Settings[設定: SettingsPage.tsx]
-        App --> History[歷史: HistoryPage.tsx]
+        App["App.tsx (Router)"]
+        App --> Report["首頁: ReportPage.tsx"]
+        App --> Settings["設定: SettingsPage.tsx"]
+        App --> History["歷史: HistoryPage.tsx"]
     end
 
     subgraph Context ["State Management (Context Layer)"]
-        ConfigProvider[ConfigProvider.tsx]
+        ConfigProvider["ConfigProvider.tsx"]
         Report --> ConfigProvider
         Settings --> ConfigProvider
         History --> ConfigProvider
     end
 
     subgraph Utils ["Logic & Utilities Layer"]
-        ConfigProvider --> CM[configManager.ts]
-        CM --> FS[fileSystem.ts]
-        CM --> Crypto[crypto.ts (SHA-256)]
+        ConfigProvider --> CM["configManager.ts"]
+        CM --> FS["fileSystem.ts"]
+        CM --> Crypto["crypto.ts (SHA-256)"]
         
-        Report --> EP[excelParser.ts]
-        EP --> XLSX[SheetJS (Library)]
+        Report --> EP["excelParser.ts"]
+        EP --> XLSX["SheetJS (Library)"]
         
-        Settings --> Updater[updater.ts]
+        Settings --> Updater["updater.ts"]
     end
 
     subgraph Storage ["Browser Storage & Local Disk"]
-        CM --> LS[(LocalStorage)]
-        FS -.-> IDB[(IndexedDB)]
-        FS --> LocalDisk[(本機硬碟 /config 資料夾)]
+        CM --> LS[("LocalStorage")]
+        FS -.-> IDB[("IndexedDB")]
+        FS --> LocalDisk[("本機硬碟 /config 資料夾")]
     end
 
     subgraph External ["External APIs"]
-        Updater --> GitHub[GitHub API (raw.githubusercontent)]
+        Updater --> GitHub["GitHub API (raw.githubusercontent)"]
     end
 ```
 
