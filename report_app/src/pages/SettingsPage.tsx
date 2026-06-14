@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useConfig } from '../components/ConfigProvider';
 import type { AppConfig } from '../utils/configManager';
-import { Save, Plus, X, Type, Code, FolderOpen, GripVertical, ArrowUpDown } from 'lucide-react';
+import { Save, Plus, X, Type, Code, FolderOpen, GripVertical, ArrowUpDown, DownloadCloud } from 'lucide-react';
+import { checkForUpdates, CURRENT_VERSION } from '../utils/updater';
 
 const parseQueryTokens = (query: string) => {
   if (!query) return [{ operator: '', text: '' }];
@@ -96,6 +97,8 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
   const [backupFilename, setBackupFilename] = useState('');
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [draggingItem, setDraggingItem] = useState<{ type: string, index: number } | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<{hasUpdate: boolean, latestVersion: string, updateUrl: string} | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   useEffect(() => {
     getAvailableBackups().then(setBackups);
@@ -136,6 +139,22 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
     
     setLocalConfig({ ...localConfig, [targetType]: arr });
     setDraggingItem(null);
+  };
+
+  const handleCheckUpdate = async () => {
+    setIsCheckingUpdate(true);
+    const info = await checkForUpdates();
+    if (info) {
+      setUpdateInfo(info);
+      if (!info.hasUpdate) {
+        alert('目前已是最新版本！');
+      } else {
+        alert(`發現新版本：v${info.latestVersion}！請前往 GitHub 下載更新。`);
+      }
+    } else {
+      alert('無法連接到 GitHub 檢查更新，請確認網路連線。');
+    }
+    setIsCheckingUpdate(false);
   };
 
   // --- Handlers ---
@@ -433,6 +452,31 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
               ))}
             </div>
             {!isReorderMode && <button className="glass-button" onClick={handleAddInventory} style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '15px' }}><Plus size={14} /> 新增庫存項目</button>}
+          </div>
+
+          {/* System & Updates */}
+          <div style={{ background: '#f9fafb', padding: '15px', borderRadius: '8px', border: '1px solid #e5e7eb', marginBottom: '20px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '10px', fontSize: '1.1em' }}>系統與更新 (System & Updates)</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ margin: '0 0 5px 0', fontSize: '0.9em', color: '#4b5563' }}>目前版本：v{CURRENT_VERSION}</p>
+                {updateInfo?.hasUpdate && (
+                  <p style={{ margin: 0, fontSize: '0.9em', color: '#ef4444', fontWeight: 'bold' }}>
+                    發現新版本：v{updateInfo.latestVersion}！
+                    <a href={updateInfo.updateUrl} target="_blank" rel="noreferrer" style={{ marginLeft: '10px', color: '#3b82f6', fontWeight: 'normal', textDecoration: 'underline' }}>前往 GitHub</a>
+                  </p>
+                )}
+              </div>
+              <button 
+                className="glass-button" 
+                onClick={handleCheckUpdate} 
+                disabled={isCheckingUpdate}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#3b82f6', color: 'white', borderColor: '#2563eb', opacity: isCheckingUpdate ? 0.7 : 1 }}
+              >
+                <DownloadCloud size={16} /> 
+                {isCheckingUpdate ? '檢查中...' : '檢查更新'}
+              </button>
+            </div>
           </div>
 
         </div>
