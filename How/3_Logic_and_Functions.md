@@ -17,9 +17,9 @@ flowchart TD
     Start(["輸入 Query 字串, e.g. '>[長條]:B + ~{咖啡}:A'"]) --> ParseTokens["將字串切割成 Tokens"]
     ParseTokens --> TokenLoop{"走訪每個 Token"}
     
-    TokenLoop -->|Token = ">[長條]:B"| Extract1["萃取: 類型='>', 比對='[]', 目標='長條', 欄位='B'"]
-    TokenLoop -->|Token = "+"| Op["記錄運算子為加號"]
-    TokenLoop -->|Token = "~{咖啡}:A"| Extract2["萃取: 類型='~', 比對='{}', 目標='咖啡', 欄位='A'"]
+    TokenLoop -->|Token = >[長條]:B| Extract1["萃取: 類型='>', 比對='[]', 目標='長條', 欄位='B'"]
+    TokenLoop -->|Token = +| Op["記錄運算子為加號"]
+    TokenLoop -->|Token = ~{咖啡}:A| Extract2["萃取: 類型='~', 比對='{}', 目標='咖啡', 欄位='A'"]
     
     Extract1 --> FindData[遍歷 Excel 每一列]
     Extract2 --> FindData
