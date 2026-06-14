@@ -1,5 +1,6 @@
 import { readJsonFile, writeJsonFile, getOrCreateConfigDir, listConfigFiles } from './fileSystem';
 import { calculateSHA256 } from './crypto';
+import { getCurrentMonthForFilename } from './date';
 
 export interface AppConfig {
   categories: { displayName: string; query: string }[];
@@ -65,6 +66,52 @@ export function migrateConfig(config: any): AppConfig {
   return merged;
 }
 
+/**
+ * Validates and sanitizes a raw JSON object to ensure it strictly conforms
+ * to the AppConfig schema, preventing malicious or malformed injections.
+ */
+export function validateConfig(data: any): AppConfig {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Config must be a JSON object');
+  }
+
+  // Helper to validate string fields
+  const isStr = (v: any) => typeof v === 'string';
+
+  const categories = Array.isArray(data.categories) 
+    ? data.categories.filter((c: any) => c && isStr(c.displayName) && isStr(c.query))
+    : [];
+
+  const trackSales = Array.isArray(data.trackSales)
+    ? data.trackSales.filter((t: any) => t && isStr(t.displayName) && isStr(t.query))
+    : [];
+
+  const combinedSales = Array.isArray(data.combinedSales)
+    ? data.combinedSales.filter((c: any) => 
+        c && isStr(c.displayName) && 
+        Array.isArray(c.queries) && c.queries.every(isStr)
+      )
+    : [];
+
+  const inventoryItems = Array.isArray(data.inventoryItems)
+    ? data.inventoryItems.filter((i: any) => 
+        i && isStr(i.name) && typeof i.requiresDate === 'boolean'
+      )
+    : [];
+
+  // Throw if essential structural parts are completely missing/invalid
+  if (!Array.isArray(data.categories)) {
+    throw new Error('Missing or invalid "categories" array');
+  }
+
+  return {
+    categories,
+    trackSales,
+    combinedSales,
+    inventoryItems
+  };
+}
+
 export async function loadLatestBackupConfig(dirHandle: FileSystemDirectoryHandle): Promise<AppConfig | null> {
   const configDir = await getOrCreateConfigDir(dirHandle);
   if (!configDir) return null;
@@ -73,7 +120,7 @@ export async function loadLatestBackupConfig(dirHandle: FileSystemDirectoryHandl
   if (files.length === 0) return null;
   
   // Filter for current month and sort
-  const currentMonth = new Date().toLocaleDateString('en-US', { month: '2-digit' }); // '06'
+  const currentMonth = getCurrentMonthForFilename();
   const monthFiles = files.filter(f => f.startsWith(currentMonth));
   
   let targetFile = '';

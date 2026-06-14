@@ -1,6 +1,5 @@
 export async function requestDirectoryAccess(): Promise<FileSystemDirectoryHandle | null> {
   try {
-    // @ts-ignore - File System Access API types might not be present by default
     const dirHandle = await window.showDirectoryPicker({
       mode: 'readwrite',
     });
@@ -14,7 +13,6 @@ export async function requestDirectoryAccess(): Promise<FileSystemDirectoryHandl
 export async function writeJsonFile(dirHandle: FileSystemDirectoryHandle, filename: string, data: any): Promise<void> {
   try {
     const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-    // @ts-ignore
     const writable = await fileHandle.createWritable();
     await writable.write(JSON.stringify(data, null, 2));
     await writable.close();
@@ -39,7 +37,6 @@ export async function readJsonFile(dirHandle: FileSystemDirectoryHandle, filenam
 export async function writeTextFile(dirHandle: FileSystemDirectoryHandle, filename: string, text: string): Promise<void> {
   try {
     const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-    // @ts-ignore
     const writable = await fileHandle.createWritable();
     await writable.write(text);
     await writable.close();
@@ -52,7 +49,6 @@ export async function writeTextFile(dirHandle: FileSystemDirectoryHandle, filena
 export async function listTextFiles(dirHandle: FileSystemDirectoryHandle): Promise<string[]> {
   const files: string[] = [];
   try {
-    // @ts-ignore
     for await (const entry of dirHandle.values()) {
       if (entry.kind === 'file' && entry.name.endsWith('.txt')) {
         files.push(entry.name);
@@ -79,7 +75,6 @@ export async function listConfigFiles(dirHandle: FileSystemDirectoryHandle): Pro
     const configDir = await getOrCreateConfigDir(dirHandle);
     if (!configDir) return files;
     
-    // @ts-ignore
     for await (const entry of configDir.values()) {
       if (entry.kind === 'file' && entry.name.endsWith('.json') && !entry.name.startsWith('.')) {
         files.push(entry.name);
@@ -102,13 +97,11 @@ export async function renameConfigFile(dirHandle: FileSystemDirectoryHandle, old
     
     // Write new file
     const newFileHandle = await configDir.getFileHandle(newName, { create: true });
-    // @ts-ignore
     const writable = await newFileHandle.createWritable();
     await writable.write(data);
     await writable.close();
     
     // Delete old file
-    // @ts-ignore
     await configDir.removeEntry(oldName);
     return true;
   } catch (error) {

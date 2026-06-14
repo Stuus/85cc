@@ -39,11 +39,13 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ dirHandle, child
       setIsLoading(true);
       let loaded: any = null;
       
-      const saved = localStorage.getItem('localAppConfig');
+      const saved = localStorage.getItem('85cc_localAppConfig');
       if (saved) {
         try {
           loaded = JSON.parse(saved);
-        } catch(e) {}
+        } catch(e) {
+          console.warn('Failed to parse 85cc_localAppConfig from localStorage:', e);
+        }
       }
       
       if (!loaded && dirHandle) {
@@ -52,7 +54,7 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ dirHandle, child
 
       const finalConfig = loaded ? migrateConfig(loaded) : DEFAULT_CONFIG;
       setConfig(finalConfig);
-      localStorage.setItem('localAppConfig', JSON.stringify(finalConfig));
+      localStorage.setItem('85cc_localAppConfig', JSON.stringify(finalConfig));
       
       setIsLoading(false);
     }
@@ -61,7 +63,7 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ dirHandle, child
 
   const updateConfig = async (newConfig: AppConfig, saveBackupAs?: string) => {
     setConfig(newConfig);
-    localStorage.setItem('localAppConfig', JSON.stringify(newConfig));
+    localStorage.setItem('85cc_localAppConfig', JSON.stringify(newConfig));
     
     if (dirHandle && saveBackupAs) {
       await saveBackupConfig(dirHandle, saveBackupAs, newConfig);
@@ -76,7 +78,7 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ dirHandle, child
     if (data) {
       const migrated = migrateConfig(data);
       setConfig(migrated);
-      localStorage.setItem('localAppConfig', JSON.stringify(migrated));
+      localStorage.setItem('85cc_localAppConfig', JSON.stringify(migrated));
     }
   };
 
@@ -103,7 +105,7 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ dirHandle, child
       if (data) {
         const migrated = migrateConfig(data);
         setConfig(migrated);
-        localStorage.setItem('localAppConfig', JSON.stringify(migrated));
+        localStorage.setItem('85cc_localAppConfig', JSON.stringify(migrated));
         return true;
       }
     } catch (e) {

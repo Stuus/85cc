@@ -1,92 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useConfig } from '../components/ConfigProvider';
-import type { AppConfig } from '../utils/configManager';
+import { validateConfig, type AppConfig } from '../utils/configManager';
 import { Save, Plus, X, Type, Code, FolderOpen, GripVertical, ArrowUpDown, DownloadCloud } from 'lucide-react';
 import { checkForUpdates, CURRENT_VERSION } from '../utils/updater';
+import { getCurrentMonthDayForFilename } from '../utils/date';
+import { QueryEditor } from '../components/QueryEditor';
 
-const parseQueryTokens = (query: string) => {
-  if (!query) return [{ operator: '', text: '' }];
-  const tokens = [];
-  let currentToken = '';
-  let currentOp = '';
-  let inBracket = false;
-  
-  for (let i = 0; i < query.length; i++) {
-    const char = query[i];
-    if (char === '[' || char === '{') inBracket = true;
-    if (char === ']' || char === '}') inBracket = false;
-    
-    if (!inBracket && (char === '+' || char === '-')) {
-      if (currentToken.trim() || currentOp) {
-        tokens.push({ operator: currentOp, text: currentToken.trim() });
-      }
-      currentOp = char;
-      currentToken = '';
-    } else {
-      currentToken += char;
-    }
-  }
-  if (currentToken.trim() || currentOp || tokens.length === 0) {
-    tokens.push({ operator: currentOp, text: currentToken.trim() });
-  }
-  return tokens;
-};
 
-const QueryEditor: React.FC<{ value: string, onChange: (val: string) => void, disabled?: boolean }> = ({ value, onChange, disabled }) => {
-  const tokens = parseQueryTokens(value);
-
-  const updateToken = (index: number, newText: string, newOp?: string) => {
-    const newTokens = [...tokens];
-    newTokens[index].text = newText;
-    if (newOp !== undefined) newTokens[index].operator = newOp;
-    onChange(newTokens.map((t, i) => i === 0 ? t.text : `${t.operator || '+'} ${t.text}`).join(' '));
-  };
-
-  const addToken = () => {
-    const newTokens = [...tokens, { operator: '+', text: '' }];
-    onChange(newTokens.map((t, i) => i === 0 ? t.text : `${t.operator || '+'} ${t.text}`).join(' '));
-  };
-
-  const removeToken = (index: number) => {
-    const newTokens = tokens.filter((_, i) => i !== index);
-    if (newTokens.length === 0) {
-      onChange('');
-    } else {
-      newTokens[0].operator = '';
-      onChange(newTokens.map((t, i) => i === 0 ? t.text : `${t.operator || '+'} ${t.text}`).join(' '));
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', flex: 1, opacity: disabled ? 0.7 : 1 }}>
-      {tokens.map((token, index) => (
-        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: disabled ? '#f3f4f6' : '#fff', padding: '2px 4px', borderRadius: '4px', border: '1px solid #d1d5db' }}>
-          {index > 0 && (
-            <select 
-              value={token.operator || '+'} 
-              onChange={e => updateToken(index, token.text, e.target.value)}
-              disabled={disabled}
-              style={{ border: 'none', background: '#f3f4f6', outline: 'none', cursor: disabled ? 'not-allowed' : 'pointer', fontWeight: 'bold', padding: '2px 4px', borderRadius: '4px' }}
-            >
-              <option value="+">+</option>
-              <option value="-">-</option>
-            </select>
-          )}
-          <input 
-            style={{ border: 'none', outline: 'none', width: Math.max(80, token.text.length * 8) + 'px', minWidth: '80px', padding: '4px', fontFamily: 'monospace', background: 'transparent' }} 
-            placeholder=">[類別]:B"
-            value={token.text} 
-            onChange={e => updateToken(index, e.target.value, token.operator)} 
-            disabled={disabled}
-            readOnly={disabled}
-          />
-          {!disabled && <button className="remove-btn" onClick={() => removeToken(index)} style={{ padding: '2px' }}><X size={14}/></button>}
-        </div>
-      ))}
-      {!disabled && <button className="glass-button" onClick={addToken} style={{ padding: '2px 6px', fontSize: '0.8em', background: '#eff6ff', borderColor: '#bfdbfe', color: '#1d4ed8' }}><Plus size={14}/></button>}
-    </div>
-  );
-};
 
 export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onChangeDirectory }) => {
   const { config, updateConfig, isLoading, loadBackup, getAvailableBackups } = useConfig();
@@ -102,7 +22,7 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
 
   useEffect(() => {
     getAvailableBackups().then(setBackups);
-    setBackupFilename(`${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }).replace('/', '-')}.json`);
+    setBackupFilename(`${getCurrentMonthDayForFilename()}.json`);
   }, [getAvailableBackups]);
 
   useEffect(() => {
@@ -110,7 +30,7 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
       setLocalConfig(config);
       setJsonText(JSON.stringify(config, null, 2));
     }
-  }, [config]);
+  }, [config, localConfig]);
 
   if (isLoading || !localConfig) {
     return <p>載入設定檔中...</p>;
@@ -225,11 +145,11 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
 
   const handleSwitchToVisual = () => {
     try {
-      const parsed = JSON.parse(jsonText);
+      const parsed = validateConfig(JSON.parse(jsonText));
       setLocalConfig(parsed);
       setMode('visual');
-    } catch (e) {
-      alert('JSON 格式錯誤，無法切換為視覺化模式。請先修正格式。');
+    } catch (e: any) {
+      alert(`JSON 格式或結構錯誤：${e.message}。請先修正格式再切換。`);
     }
   };
 
@@ -237,8 +157,10 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
     try {
       let finalConfig = localConfig;
       if (mode === 'json') {
-        finalConfig = JSON.parse(jsonText);
+        finalConfig = validateConfig(JSON.parse(jsonText));
         setLocalConfig(finalConfig);
+      } else {
+        finalConfig = validateConfig(localConfig);
       }
       await updateConfig(finalConfig, backupFilename || undefined);
       if (backupFilename) {
@@ -251,11 +173,11 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
   };
 
   return (
-    <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+    <div className="glass-panel content-panel" style={{ padding: '20px' }}>
+      <div className="header-row" style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
           <h2 style={{ margin: 0 }}>設定檔管理</h2>
-          <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: '6px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', border: '1px solid #d1d5db', borderRadius: '6px', overflow: 'hidden', flexWrap: 'wrap' }}>
             <button 
               onClick={handleSwitchToVisual} 
               style={{ background: mode === 'visual' ? '#e5e7eb' : '#fff', border: 'none', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
@@ -278,7 +200,7 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
             )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           {onChangeDirectory && (
             <button className="glass-button" onClick={onChangeDirectory} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f9fafb', color: '#4b5563', borderColor: '#d1d5db' }}>
               <FolderOpen size={16} /> 更改儲存目錄
@@ -365,7 +287,7 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
                 onDragStart={() => handleDragStart('categories', idx)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, 'categories', idx)}
-                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', opacity: draggingItem?.type === 'categories' && draggingItem?.index === idx ? 0.5 : 1, cursor: isReorderMode ? 'grab' : 'default', background: isReorderMode ? '#fff' : 'transparent', padding: isReorderMode ? '4px' : '0', borderRadius: '6px', border: isReorderMode ? '1px dashed #d1d5db' : 'none' }}
+                className={`draggable-item ${draggingItem?.type === 'categories' && draggingItem?.index === idx ? 'dragging' : ''} ${isReorderMode ? 'reorder-mode' : ''}`}
               >
                 {isReorderMode && <GripVertical size={16} color="#9ca3af" style={{ cursor: 'grab' }} />}
                 <input className="glass-input" style={{ width: '150px', background: isReorderMode ? '#f3f4f6' : '#fff' }} placeholder="顯示名稱" value={cat.displayName} onChange={e => handleUpdateCategory(idx, 'displayName', e.target.value)} disabled={isReorderMode} />
@@ -386,7 +308,7 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
                 onDragStart={() => handleDragStart('trackSales', idx)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, 'trackSales', idx)}
-                style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', opacity: draggingItem?.type === 'trackSales' && draggingItem?.index === idx ? 0.5 : 1, cursor: isReorderMode ? 'grab' : 'default', background: isReorderMode ? '#fff' : 'transparent', padding: isReorderMode ? '4px' : '0', borderRadius: '6px', border: isReorderMode ? '1px dashed #d1d5db' : 'none' }}
+                className={`draggable-item ${draggingItem?.type === 'trackSales' && draggingItem?.index === idx ? 'dragging' : ''} ${isReorderMode ? 'reorder-mode' : ''}`}
               >
                 {isReorderMode && <GripVertical size={16} color="#9ca3af" style={{ cursor: 'grab' }} />}
                 <input className="glass-input" style={{ width: '150px', background: isReorderMode ? '#f3f4f6' : '#fff' }} placeholder="顯示名稱" value={item.displayName} onChange={e => handleUpdateTrackSale(idx, 'displayName', e.target.value)} disabled={isReorderMode} />
@@ -439,7 +361,7 @@ export const SettingsPage: React.FC<{ onChangeDirectory?: () => void }> = ({ onC
                   onDragStart={() => handleDragStart('inventoryItems', idx)}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, 'inventoryItems', idx)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', padding: '8px', borderRadius: '6px', border: isReorderMode ? '1px dashed #3b82f6' : '1px solid #e5e7eb', opacity: draggingItem?.type === 'inventoryItems' && draggingItem?.index === idx ? 0.5 : 1, cursor: isReorderMode ? 'grab' : 'default' }}
+                  className={`draggable-item ${draggingItem?.type === 'inventoryItems' && draggingItem?.index === idx ? 'dragging' : ''} ${isReorderMode ? 'reorder-mode' : ''}`}
                 >
                   {isReorderMode && <GripVertical size={16} color="#9ca3af" style={{ cursor: 'grab' }} />}
                   <input className="glass-input" style={{ flex: 1, minWidth: '0', background: isReorderMode ? '#f3f4f6' : '#fff' }} placeholder="如: 鮮奶" value={item.name} onChange={e => handleUpdateInventoryName(idx, e.target.value)} disabled={isReorderMode} />

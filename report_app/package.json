@@ -7,14 +7,19 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:exe": "npm run build && npx pkg server.cjs --target node18-win-x64 --output 85cc-app.exe"
+  },
+  "pkg": {
+    "scripts": "server.cjs",
+    "assets": "dist/**/*"
   },
   "dependencies": {
+    "express": "^5.2.1",
     "lucide-react": "^1.17.0",
     "peerjs": "^1.5.5",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "vite-plugin-pwa": "^1.3.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -22,6 +27,7 @@
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/wicg-file-system-access": "^2023.10.7",
     "@vitejs/plugin-react": "^4.2.1",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -29,6 +35,7 @@
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^5.2.0"
+    "vite": "^5.2.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }

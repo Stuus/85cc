@@ -1,12 +1,12 @@
 import * as XLSX from 'xlsx';
 import type { AppConfig } from './configManager';
+import { safeEvaluate } from './mathParser';
 
 export interface ParsedExcelData {
   revenue: number;
   categories: Record<string, number>;
   sales: Record<string, number>;
   combinedSales: Record<string, number[]>;
-  scrap: Record<string, number>;
 }
 
 
@@ -34,7 +34,6 @@ function findSalesValue(
   const catCol = Math.max(0, getColumnIndex(data, '類別'));
   let itemCol = getColumnIndex(data, '品名');
   if (itemCol === -1) itemCol = getColumnIndex(data, '品項');
-  const resolvedItemCol = itemCol !== -1 ? itemCol : 2; // fallback to C
   
   const qtyCol = getColumnIndex(data, '銷售量');
   const amtCol = getColumnIndex(data, '銷售金額');
@@ -53,7 +52,6 @@ function findSalesValue(
       currentCategory = rawCat;
     }
 
-    const itemCell = String(row[resolvedItemCol] || '').trim();
     const fullRowStr = row.join(' ');
 
     let isMatch = false;
@@ -125,8 +123,8 @@ function evaluateSalesQuery(query: string, salesData: any[][]): number {
   });
 
   try {
-    const result = new Function('return (' + expr + ');')();
-    return Math.max(0, Number(result) || 0);
+    const result = safeEvaluate(expr);
+    return Math.max(0, result);
   } catch (e) {
     console.error("Query evaluation failed for:", query, "Parsed expr:", expr);
     return 0;
@@ -143,7 +141,6 @@ export async function parseExcelFiles(
     categories: {},
     sales: {},
     combinedSales: {},
-    scrap: { '麵包金額': 0, '常溫金額': 0 },
   };
 
   // 1. Read Cash Report (現金日報表)
@@ -192,10 +189,6 @@ export async function parseExcelFiles(
   config.combinedSales.forEach(combo => {
     result.combinedSales[combo.displayName] = combo.queries.map(q => evaluateSalesQuery(q, salesData));
   });
-
-  // Extract Scrap manually via query (defaulting to 0 if they don't want to extract it this way)
-  result.scrap['麵包金額'] = evaluateSalesQuery('>[報廢]:B', salesData); // Best effort fallback
-  result.scrap['常溫金額'] = 0; 
 
   return result;
 }

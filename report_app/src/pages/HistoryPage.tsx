@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { listTextFiles } from '../utils/fileSystem';
 import { FileText, RefreshCw } from 'lucide-react';
 import { useConfig } from '../components/ConfigProvider';
@@ -10,15 +10,15 @@ export const HistoryPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchFiles = async () => {
+  const fetchFiles = useCallback(async () => {
     if (!dirHandle) return;
     const list = await listTextFiles(dirHandle);
     setFiles(list.sort().reverse()); // newest first usually if named by date
-  };
+  }, [dirHandle]);
 
   useEffect(() => {
     fetchFiles();
-  }, [dirHandle]);
+  }, [fetchFiles]);
 
   const handleSelectFile = async (filename: string) => {
     setSelectedFile(filename);
@@ -55,10 +55,10 @@ export const HistoryPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null
   };
 
   return (
-    <div style={{ display: 'flex', gap: '20px', height: '100%' }}>
-      <div className="glass-panel" style={{ flex: '0 0 250px', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3>歷史紀錄</h3>
+    <div className="page-container">
+      <div className="glass-panel sidebar-panel" style={{ overflowY: 'auto' }}>
+        <div className="header-row">
+          <h3 style={{ margin: 0 }}>歷史紀錄</h3>
           <button className="glass-button" onClick={fetchFiles} style={{ padding: '0.4em 0.8em' }}>
             <RefreshCw size={14} />
           </button>
@@ -85,9 +85,9 @@ export const HistoryPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null
         )}
       </div>
 
-      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3>{selectedFile || '請選擇一個歷史紀錄'}</h3>
+      <div className="glass-panel content-panel">
+        <div className="header-row">
+          <h3 style={{ margin: 0 }}>{selectedFile || '請選擇一個歷史紀錄'}</h3>
           {extractedHash && (
             <button className="glass-button" onClick={handleRestore} style={{ background: '#3b82f6', color: 'white', borderColor: '#2563eb' }}>
               使用此紀錄的設定檔來製作新日報

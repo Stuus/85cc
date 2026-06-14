@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { SyncModal } from '../components/SyncModal';
 import { useConfig } from '../components/ConfigProvider';
 import { parseExcelFiles } from '../utils/excelParser';
 import type { ParsedExcelData } from '../utils/excelParser';
 import { writeTextFile } from '../utils/fileSystem';
 import { calculateSHA256 } from '../utils/crypto';
+import { safeEvaluate } from '../utils/mathParser';
+import { getCurrentMonthDayForDisplay } from '../utils/date';
 import { FileDown, RefreshCw, Plus, X, Trash2, Share2 } from 'lucide-react';
 
 interface DateRow {
@@ -26,7 +29,7 @@ export interface ManualInputs {
 }
 
 const DEFAULT_MANUAL: ManualInputs = {
-  date: new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
+  date: getCurrentMonthDayForDisplay(),
   pos1Customers: '',
   pos23Customers: '',
   workHours: '',
@@ -38,7 +41,6 @@ const DEFAULT_MANUAL: ManualInputs = {
   customSales: {},
 };
 
-import { SyncModal } from '../components/SyncModal';
 
 export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null }> = ({ dirHandle }) => {
   const { config, updateConfig, isLoading } = useConfig();
@@ -49,7 +51,7 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
   const [parseStatus, setParseStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
   const [manual, setManual] = useState<ManualInputs>(() => {
-    const saved = localStorage.getItem('manualInputs');
+    const saved = localStorage.getItem('85cc_manualInputs');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -70,7 +72,7 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
   const [generatedText, setGeneratedText] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('manualInputs', JSON.stringify(manual));
+    localStorage.setItem('85cc_manualInputs', JSON.stringify(manual));
   }, [manual]);
 
   if (isLoading || !config) return <p>載入中...</p>;
@@ -78,7 +80,7 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
   const handleClearAll = () => {
     if (window.confirm('確定要清除所有手動輸入的暫存資料嗎？')) {
       setManual(DEFAULT_MANUAL);
-      localStorage.removeItem('manualInputs');
+      localStorage.removeItem('85cc_manualInputs');
       setGeneratedText('');
     }
   };
@@ -108,7 +110,7 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
       ...manual,
       inventoryDates: {
         ...manual.inventoryDates,
-        [invName]: [...current, { id: Math.random().toString(36).substr(2, 9), date: '', quantity: '' }]
+        [invName]: [...current, { id: crypto.randomUUID(), date: '', quantity: '' }]
       }
     });
   };
@@ -141,7 +143,6 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
       categories: {},
       sales: {},
       combinedSales: {},
-      scrap: { '麵包金額': 0, '常溫金額': 0 },
     };
 
     let text = `${manual.date}台北景美營業額：${data.revenue}\n`;
@@ -151,11 +152,11 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
     let pos23 = manual.pos23Customers;
     if (pos23) {
       try {
-        if (/^[0-9+\-*/\s.()]+$/.test(pos23)) {
-          const evalResult = new Function('return (' + pos23 + ');')();
-          if (!isNaN(evalResult)) pos23 = String(evalResult);
-        }
-      } catch(e) {}
+        const evalResult = safeEvaluate(pos23);
+        if (!isNaN(evalResult) && evalResult > 0) pos23 = String(evalResult);
+      } catch(e) {
+        console.warn('Error evaluating pos23Customers:', e);
+      }
     }
     text += `來客：${manual.pos1Customers}/${pos23}\n`;
     text += `工時：${manual.workHours}\n`;
@@ -182,8 +183,8 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
     });
 
     text += `\n報廢\n`;
-    const finalScrapBread = manual.scrapBread || data.scrap['麵包金額'] || 0;
-    const finalScrapTemp = manual.scrapTemp || data.scrap['常溫金額'] || 0;
+    const finalScrapBread = manual.scrapBread || '0';
+    const finalScrapTemp = manual.scrapTemp || '0';
     text += `麵包金額：${finalScrapBread}\n`;
     text += `常溫金額：${finalScrapTemp}\n`;
 
@@ -254,12 +255,12 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
   };
 
   return (
-    <div style={{ display: 'flex', gap: '20px', height: '100%', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+    <div className="page-container">
       {/* 左側：檔案與手動輸入 */}
-      <div className="glass-panel" style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="glass-panel content-panel" style={{ gap: '15px' }}>
+        <div className="header-row">
           <h3 style={{ margin: 0 }}>輸入資料</h3>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button className="glass-button" onClick={() => setIsSyncModalOpen(true)} style={{ color: '#8b5cf6', borderColor: '#c4b5fd' }}>
               <Share2 size={14} style={{ marginRight: '4px' }} /> 跨裝置同步
             </button>
@@ -269,12 +270,12 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <div style={{ flex: 1 }}>
+        <div className="responsive-grid">
+          <div style={{ flex: 1, minWidth: 0 }}>
             <label style={{ fontSize: '0.85em', color: '#6b7280' }}>現金日報表 (.xls)</label>
             <input type="file" accept=".xls,.xlsx" onChange={e => setCashFile(e.target.files?.[0] || null)} className="glass-input" style={{ width: '100%', boxSizing: 'border-box' }} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <label style={{ fontSize: '0.85em', color: '#6b7280' }}>銷售日報表 (.xlsx)</label>
             <input type="file" accept=".xls,.xlsx" onChange={e => setSalesFile(e.target.files?.[0] || null)} className="glass-input" style={{ width: '100%', boxSizing: 'border-box' }} />
           </div>
@@ -294,7 +295,7 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
 
         <hr style={{ borderTop: '1px solid #e5e7eb', width: '100%', margin: '10px 0' }} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <div className="responsive-grid">
           <input className="glass-input" placeholder="日期 (如 5/9)" value={manual.date} onChange={e => setManual({...manual, date: e.target.value})} />
           <input className="glass-input" placeholder="值班人員" value={manual.manager} onChange={e => setManual({...manual, manager: e.target.value})} />
           <input className="glass-input" placeholder="來客 Pos1" value={manual.pos1Customers} onChange={e => setManual({...manual, pos1Customers: e.target.value})} />
@@ -302,7 +303,7 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
           <input className="glass-input" placeholder="總工時" value={manual.workHours} onChange={e => setManual({...manual, workHours: e.target.value})} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <div className="responsive-grid">
           <input className="glass-input" placeholder="麵包報廢" value={manual.scrapBread} onChange={e => setManual({...manual, scrapBread: e.target.value})} />
           <input className="glass-input" placeholder="常溫報廢" value={manual.scrapTemp} onChange={e => setManual({...manual, scrapTemp: e.target.value})} />
         </div>
@@ -311,7 +312,7 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
         {(config.trackSales.some(t => t.query === '*') || config.combinedSales.some(c => c.queries.includes('*'))) && (
           <>
             <h4 style={{ margin: '10px 0 0' }}>手動品項輸入</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="responsive-grid">
               {config.trackSales.filter(t => t.query === '*').map(item => (
                 <input 
                   key={item.displayName}
@@ -388,10 +389,10 @@ export const ReportPage: React.FC<{ dirHandle: FileSystemDirectoryHandle | null 
       </div>
 
       {/* 右側：預覽與輸出 */}
-      <div className="glass-panel" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+      <div className="glass-panel content-panel">
+        <div className="header-row" style={{ marginBottom: '10px' }}>
           <h3 style={{ margin: 0 }}>回報簡訊預覽</h3>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button className="glass-button" onClick={handleShare} disabled={!generatedText} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: generatedText ? '#8b5cf6' : '#f3f4f6', color: generatedText ? 'white' : '#9ca3af' }}>
               <Share2 size={16} /> 分享
             </button>

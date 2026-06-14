@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
-import { X, Send, Download, Smartphone, Laptop, CheckCircle, AlertCircle } from 'lucide-react';
-import type { AppConfig } from '../utils/configManager';
+import { X, Send, Download, Laptop, AlertCircle } from 'lucide-react';
+import { validateConfig, type AppConfig } from '../utils/configManager';
 import type { ManualInputs } from '../pages/ReportPage';
 
 interface SyncModalProps {
@@ -39,19 +39,30 @@ export const SyncModal: React.FC<SyncModalProps> = ({ isOpen, onClose, config, m
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setPairCode(code);
 
+    let timeoutId: number;
+
     const peer = new Peer(`85cc-sync-${code}`);
     peerRef.current = peer;
 
     peer.on('open', () => {
       setStatus('等待連線中...');
+      timeoutId = window.setTimeout(() => {
+        peer.destroy();
+        setError('接收逾時 (30秒無人連線)');
+        setStatus('');
+      }, 30000);
     });
 
     peer.on('connection', (conn) => {
+      clearTimeout(timeoutId);
       setStatus('設備已連線，接收資料中...');
       conn.on('data', (data: any) => {
         try {
           if (data && data.type === '85cc-sync' && data.payload) {
-            if (data.payload.config) updateConfig(data.payload.config);
+            if (data.payload.config) {
+              const safeConfig = validateConfig(data.payload.config);
+              updateConfig(safeConfig);
+            }
             if (data.payload.manualInputs) setManual(data.payload.manualInputs);
             setStatus('同步成功！');
             setTimeout(() => {
@@ -60,13 +71,14 @@ export const SyncModal: React.FC<SyncModalProps> = ({ isOpen, onClose, config, m
           } else {
             setError('收到無效的資料格式');
           }
-        } catch (e) {
-          setError('資料解析失敗');
+        } catch (e: any) {
+          setError(`資料驗證失敗: ${e.message}`);
         }
       });
     });
 
     peer.on('error', (err) => {
+      clearTimeout(timeoutId);
       setError(`連線錯誤: ${err.message}`);
       if (err.type === 'unavailable-id') {
          setError('配對碼衝突，請重試');
@@ -87,10 +99,19 @@ export const SyncModal: React.FC<SyncModalProps> = ({ isOpen, onClose, config, m
     const peer = new Peer(); // Random ID for sender
     peerRef.current = peer;
 
+    let timeoutId: number;
+
     peer.on('open', () => {
       const conn = peer.connect(`85cc-sync-${inputCode}`);
       
+      timeoutId = window.setTimeout(() => {
+        peer.destroy();
+        setError('發送逾時 (30秒無回應)');
+        setStatus('');
+      }, 30000);
+      
       conn.on('open', () => {
+        clearTimeout(timeoutId);
         setStatus('連線成功，正在傳送資料...');
         conn.send({
           type: '85cc-sync',
@@ -109,11 +130,13 @@ export const SyncModal: React.FC<SyncModalProps> = ({ isOpen, onClose, config, m
       });
 
       conn.on('error', (err) => {
+         clearTimeout(timeoutId);
          setError(`傳送失敗: ${err.message}`);
       });
     });
 
     peer.on('error', (err) => {
+      clearTimeout(timeoutId);
       setError(`連線錯誤: ${err.message}`);
     });
   };
